@@ -18,8 +18,8 @@ spec:
     spec:
       containers:
         - name: api
-          image: lib-system-api:latest
-          imagePullPolicy: Never
+          image: ghcr.io/user101ig/library-cloud-api:1.0.0
+          imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
                 name: library-config

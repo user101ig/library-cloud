@@ -23,8 +23,8 @@ spec:
           command: ["sh", "-c", "until nc -z minio 9000; do sleep 2; done"]
       containers:
         - name: node-red
-          image: lib-system-node-red:latest
-          imagePullPolicy: Never
+          image: ghcr.io/user101ig/library-cloud-node-red:1.0.0
+          imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
                 name: library-config
