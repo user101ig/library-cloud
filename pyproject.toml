@@ -1,0 +1,24 @@
+# Εξαρτήσεις και βασικά στοιχεία του backend.
+[project]
+name = "library-cloud-api"
+version = "0.1.0"
+description = "Minimal library backend API for the Cloud Platforms semester project."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "email-validator>=2.2.0",
+    "fastapi>=0.116.0",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "pika>=1.4.4",
+    "pyjwt[crypto]>=2.13.0",
+    "python-multipart>=0.0.32",
+    "sqlalchemy>=2.0.52",
+    "uvicorn[standard]>=0.35.0",
+]
+
+[dependency-groups]
+dev = []
+
+[tool.uv]
+package = false

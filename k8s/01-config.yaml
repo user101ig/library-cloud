@@ -1,0 +1,37 @@
+# Κοινές ρυθμίσεις και credentials του demo.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: library-config
+  namespace: library-cloud
+data:
+  KEYCLOAK_PUBLIC_URL: http://localhost:8080
+  KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+  KEYCLOAK_REALM: library
+  KEYCLOAK_CLIENT_ID: library-api
+  FRONTEND_URL: http://localhost:8000/
+  COOKIE_SECURE: "false"
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_EXCHANGE: library.events
+  RABBITMQ_QUEUE: library.node-red
+  MINIO_HOST: minio
+  MINIO_PORT: "9000"
+  MINIO_AUDIT_BUCKET: library-audit
+  TZ: Europe/Athens
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: library-secrets
+  namespace: library-cloud
+type: Opaque
+stringData:
+  KEYCLOAK_ADMIN: admin
+  KEYCLOAK_ADMIN_PASSWORD: admin
+  KEYCLOAK_CLIENT_SECRET: library-api-dev-secret
+  RABBITMQ_USER: library
+  RABBITMQ_PASSWORD: library
+  RABBITMQ_URL: amqp://library:library@rabbitmq:5672/
+  MINIO_ROOT_USER: library
+  MINIO_ROOT_PASSWORD: library-minio
+  NODE_RED_CREDENTIAL_SECRET: library-node-red-dev-secret

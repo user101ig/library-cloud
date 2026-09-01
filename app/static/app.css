@@ -1,0 +1,28 @@
+/* Απλό κοινό στυλ για όλες τις σελίδες. */
+:root { font-family: system-ui, sans-serif; color: #222; background: #f6f6f6; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+header { height: 60px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; background: white; border-bottom: 1px solid #ddd; }
+.brand { color: #222; font-size: 19px; font-weight: 700; text-decoration: none; }
+.user { display: flex; align-items: center; gap: 16px; font-size: 14px; }
+main { width: min(1100px, calc(100% - 32px)); margin: 32px auto; }
+.login-box { max-width: 420px; margin: 100px auto; padding: 32px; background: white; border: 1px solid #ddd; border-radius: 8px; }
+nav { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #ccc; }
+button, .primary { padding: 9px 14px; border: 1px solid #bbb; border-radius: 5px; background: white; color: #222; font: inherit; cursor: pointer; text-decoration: none; }
+.primary { border-color: #2457a6; background: #2457a6; color: white; }
+.tab { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; }
+.tab.active { border-bottom-color: #2457a6; color: #2457a6; }
+#content { padding: 24px; background: white; border: 1px solid #ddd; border-radius: 7px; }
+.section-heading h1 { margin: 0; font-size: 24px; }
+.section-heading p { margin: 5px 0 22px; color: #666; }
+.form { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; padding: 16px; background: #f7f7f7; border: 1px solid #ddd; border-radius: 6px; }
+label { display: grid; gap: 5px; color: #555; font-size: 13px; font-weight: 600; }
+input, select { min-width: 170px; padding: 9px; border: 1px solid #bbb; border-radius: 4px; background: white; font: inherit; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 11px 10px; text-align: left; border-bottom: 1px solid #e2e2e2; }
+th { color: #555; font-size: 12px; text-transform: uppercase; }
+.message { padding: 10px 12px; background: #eef4ff; border: 1px solid #b8cef1; border-radius: 5px; }
+.empty { padding: 28px; color: #777; text-align: center; }
+.mono { max-width: 150px; overflow: hidden; text-overflow: ellipsis; font-family: monospace; white-space: nowrap; }
+@media (max-width: 650px) { header { padding: 0 16px; } .user span { display: none; } main { margin-top: 18px; } #content { padding: 14px; } .form { display: grid; } input, select { width: 100%; } }

@@ -1,0 +1,30 @@
+<!doctype html>
+<!-- Κεντρικό κέλυφος της HTMX εφαρμογής. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Library Cloud</title>
+    <link rel="stylesheet" href="/static/app.css">
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js" integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V" crossorigin="anonymous"></script>
+  </head>
+  <body {% if user_session %}hx-headers='{"X-CSRF-Token":"{{ user_session.csrf_token }}"}'{% endif %}>
+    <header>
+      <a class="brand" href="/">Library Cloud</a>
+      {% if user_session %}<div class="user"><span>{{ user_session.user.username }} · {{ user_session.user.roles | sort | join(", ") }}</span><button hx-post="/auth/logout" hx-swap="none">Sign out</button></div>{% endif %}
+    </header>
+    <main>
+      {% if not user_session %}
+        <section class="login-box"><h1>Library management</h1><p>Sign in to continue.</p><a class="primary" href="/auth/login">Sign in</a></section>
+      {% else %}
+        {% set roles = user_session.user.roles %}
+        <nav>
+          <button class="tab active" hx-get="/ui/books" hx-target="#content" onclick="selectTab(this)">Books</button>
+          {% if "admin" in roles or "librarian" in roles %}<button class="tab" hx-get="/ui/members" hx-target="#content" onclick="selectTab(this)">Members</button><button class="tab" hx-get="/ui/loans" hx-target="#content" onclick="selectTab(this)">Loans</button>{% endif %}
+        </nav>
+        <section id="content" hx-get="/ui/books" hx-trigger="load"><p>Loading…</p></section>
+      {% endif %}
+    </main>
+    <script>function selectTab(tab){document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));tab.classList.add('active')}</script>
+  </body>
+</html>

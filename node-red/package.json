@@ -1,0 +1,10 @@
+{
+  "name": "library-node-red",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "amqplib": "2.0.1",
+    "minio": "8.0.7",
+    "pdfkit": "0.20.1"
+  }
+}

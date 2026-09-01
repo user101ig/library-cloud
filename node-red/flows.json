@@ -1,0 +1,109 @@
+[
+  {
+    "id": "library-events-flow",
+    "type": "tab",
+    "label": "Library events",
+    "disabled": false,
+    "info": "Καταναλώνει loan events από το RabbitMQ και αποθηκεύει PDF στο MinIO."
+  },
+  {
+    "id": "rabbitmq-consumer",
+    "type": "function",
+    "z": "library-events-flow",
+    "name": "RabbitMQ: loan.#",
+    "func": "return null;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "return (async () => {\nconst username = encodeURIComponent(env.get('RABBITMQ_USER') || 'library');\nconst password = encodeURIComponent(env.get('RABBITMQ_PASSWORD') || 'library');\nconst host = env.get('RABBITMQ_HOST') || 'rabbitmq';\nconst exchange = env.get('RABBITMQ_EXCHANGE') || 'library.events';\nconst queue = env.get('RABBITMQ_QUEUE') || 'library.node-red';\n\nnode.status({fill: 'yellow', shape: 'ring', text: 'connecting'});\nconst connection = await amqp.connect(`amqp://${username}:${password}@${host}:5672/`);\nconst channel = await connection.createChannel();\nawait channel.assertExchange(exchange, 'topic', {durable: true});\nawait channel.assertQueue(queue, {durable: true});\nawait channel.bindQueue(queue, exchange, 'loan.#');\nawait channel.prefetch(10);\n\ncontext.set('connection', connection);\ncontext.set('channel', channel);\nnode.status({fill: 'green', shape: 'dot', text: `listening: ${queue}`});\n\nawait channel.consume(queue, message => {\n    if (!message) return;\n    try {\n        const event = JSON.parse(message.content.toString());\n        node.send({payload: event, topic: message.fields.routingKey});\n        channel.ack(message);\n    } catch (error) {\n        node.error(`Invalid event: ${error.message}`);\n        channel.nack(message, false, false);\n    }\n}, {noAck: false});\n})();",
+    "finalize": "return (async () => {\nconst channel = context.get('channel');\nconst connection = context.get('connection');\nif (channel) await channel.close();\nif (connection) await connection.close();\nnode.status({});\n})();",
+    "libs": [
+      { "var": "amqp", "module": "amqplib" }
+    ],
+    "x": 180,
+    "y": 160,
+    "wires": [["minio-archive"]]
+  },
+  {
+    "id": "minio-archive",
+    "type": "function",
+    "z": "library-events-flow",
+    "name": "Create PDF receipt in MinIO",
+    "func": "const client = context.get('client');\nconst bucket = context.get('bucket');\nconst event = msg.payload;\nconst date = new Date(event.occurred_at);\nconst dayPath = date.toISOString().slice(0, 10).replaceAll('-', '/');\nconst timestamp = date.toISOString().replaceAll(':', '-');\nconst action = event.type === 'loan.borrowed' ? 'Book borrowed' : 'Book returned';\nconst bookTitle = event.data.book_title || 'Unknown book';\nconst bookAuthor = event.data.book_author || 'Unknown author';\nconst memberName = event.data.member_name || 'Unknown member';\nconst slug = value => value.normalize('NFKC').replace(/[^\\p{L}\\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 60) || 'unknown';\nconst fileBase = `${event.type}-${slug(bookTitle)}-${slug(memberName)}`;\nconst objectName = `loan-reports/${dayPath}/${timestamp}-${fileBase}.pdf`;\n\nconst doc = new PDFDocument({size: 'A4', margin: 56, info: {Title: `Library receipt - ${bookTitle}`}});\nconst chunks = [];\ndoc.on('data', chunk => chunks.push(chunk));\ndoc.on('error', error => node.error(`PDF creation failed: ${error.message}`, msg));\ndoc.on('end', async () => {\n    try {\n        const body = Buffer.concat(chunks);\n        await client.putObject(bucket, objectName, body, body.length, {\n            'Content-Type': 'application/pdf',\n            'Content-Disposition': `inline; filename=\\\"${fileBase}.pdf\\\"`\n        });\n        msg.archive = {bucket, objectName, contentType: 'application/pdf'};\n        node.status({fill: 'green', shape: 'dot', text: objectName});\n        node.send(msg);\n        node.done();\n    } catch (error) {\n        node.error(`MinIO upload failed: ${error.message}`, msg);\n        node.done();\n    }\n});\n\ndoc.fontSize(22).fillColor('#1f2937').text('Library Cloud', {align: 'center'});\ndoc.moveDown(0.4).fontSize(15).fillColor('#374151').text('Loan activity receipt', {align: 'center'});\ndoc.moveDown(2);\ndoc.fontSize(12).fillColor('#111827');\ndoc.text(`Action: ${action}`);\ndoc.moveDown(0.5).text(`Date: ${date.toLocaleString('en-GB', {timeZone: 'Europe/Athens'})}`);\ndoc.moveDown(0.5).text(`Book: ${bookTitle}`);\ndoc.moveDown(0.5).text(`Author: ${bookAuthor}`);\ndoc.moveDown(0.5).text(`Member: ${memberName}`);\ndoc.moveDown(2);\ndoc.fontSize(9).fillColor('#6b7280').text('Automatically generated from a RabbitMQ event and archived by Node-RED in MinIO.');\ndoc.end();\nreturn;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "return (async () => {\nconst endPoint = env.get('MINIO_HOST') || 'minio';\nconst port = Number(env.get('MINIO_PORT') || 9000);\nconst accessKey = env.get('MINIO_ROOT_USER') || 'library';\nconst secretKey = env.get('MINIO_ROOT_PASSWORD') || 'library-minio';\nconst bucket = env.get('MINIO_AUDIT_BUCKET') || 'library-audit';\nconst client = new Minio.Client({endPoint, port, useSSL: false, accessKey, secretKey});\nif (!(await client.bucketExists(bucket))) await client.makeBucket(bucket);\ncontext.set('client', client);\ncontext.set('bucket', bucket);\nnode.status({fill: 'green', shape: 'dot', text: `bucket: ${bucket}`});\n})();",
+    "finalize": "node.status({});",
+    "libs": [
+      { "var": "Minio", "module": "minio" },
+      { "var": "PDFDocument", "module": "pdfkit" }
+    ],
+    "x": 420,
+    "y": 160,
+    "wires": [["event-switch", "all-events-debug"]]
+  },
+  {
+    "id": "event-switch",
+    "type": "switch",
+    "z": "library-events-flow",
+    "name": "Event type",
+    "property": "topic",
+    "propertyType": "msg",
+    "rules": [
+      { "t": "eq", "v": "loan.borrowed", "vt": "str" },
+      { "t": "eq", "v": "loan.returned", "vt": "str" }
+    ],
+    "checkall": "true",
+    "repair": false,
+    "outputs": 2,
+    "x": 660,
+    "y": 160,
+    "wires": [["borrowed-debug"], ["returned-debug"]]
+  },
+  {
+    "id": "borrowed-debug",
+    "type": "debug",
+    "z": "library-events-flow",
+    "name": "Book borrowed",
+    "active": true,
+    "tosidebar": true,
+    "console": true,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 900,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "returned-debug",
+    "type": "debug",
+    "z": "library-events-flow",
+    "name": "Book returned",
+    "active": true,
+    "tosidebar": true,
+    "console": true,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 900,
+    "y": 200,
+    "wires": []
+  },
+  {
+    "id": "all-events-debug",
+    "type": "debug",
+    "z": "library-events-flow",
+    "name": "All RabbitMQ events",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 680,
+    "y": 240,
+    "wires": []
+  }
+]

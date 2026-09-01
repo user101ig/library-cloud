@@ -1,0 +1,134 @@
+name: lib-system
+
+services:
+  # Κεντρική εφαρμογή και HTMX frontend.
+  api:
+    build:
+      context: .
+    container_name: lib-system-api
+    environment:
+      DATABASE_URL: sqlite:////app/data/library.db
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-library}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-library-api}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-library-api-dev-secret}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8000/}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-library}:${RABBITMQ_PASSWORD:-library}@rabbitmq:5672/
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE:-library.events}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      keycloak:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    networks:
+      - library-network
+
+  keycloak:
+    image: lib-system-keycloak:latest
+    build:
+      context: ./keycloak
+    container_name: lib-system-keycloak
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
+    ports:
+      - "${KEYCLOAK_HTTP_PORT:-8080}:8080"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - ./keycloak/import:/opt/keycloak/data/import:ro
+      - ./keycloak/themes:/opt/keycloak/themes:ro
+    networks:
+      - library-network
+
+  rabbitmq:
+    image: rabbitmq:4.2-management
+    container_name: lib-system-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-library}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-library}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks:
+      - library-network
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: lib-system-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-library}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-library-minio}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks:
+      - library-network
+
+  node-red:
+    build:
+      context: ./node-red
+    container_name: lib-system-node-red
+    environment:
+      TZ: ${TZ:-Europe/Athens}
+      NODE_RED_CREDENTIAL_SECRET: ${NODE_RED_CREDENTIAL_SECRET:-library-node-red-dev-secret}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-library}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-library}
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE:-library.events}
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-library.node-red}
+      MINIO_HOST: minio
+      MINIO_PORT: 9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-library}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-library-minio}
+      MINIO_AUDIT_BUCKET: ${MINIO_AUDIT_BUCKET:-library-audit}
+    ports:
+      - "${NODE_RED_PORT:-1880}:1880"
+    depends_on:
+      # Το flow ξεκινά αφού είναι έτοιμες οι εξαρτήσεις του.
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - library-network
+
+networks:
+  library-network:
+    name: lib-system-network
+
+volumes:
+  keycloak-data:
+    name: lib-system-keycloak-data
+  rabbitmq-data:
+    name: lib-system-rabbitmq-data
+  minio-data:
+    name: lib-system-minio-data

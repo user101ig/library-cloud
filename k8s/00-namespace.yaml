@@ -1,0 +1,5 @@
+# Ξεχωριστός χώρος για όλα τα resources.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: library-cloud

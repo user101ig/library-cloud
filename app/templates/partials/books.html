@@ -1,0 +1,16 @@
+<!-- Λίστα και φόρμα βιβλίων. -->
+<div class="section-heading"><div><h1>Books</h1><p>Library catalogue</p></div></div>
+{% if message %}<p class="message">{{ message }}</p>{% endif %}
+{% if "admin" in user.roles or "librarian" in user.roles %}
+<form class="form" hx-post="/ui/books" hx-target="#content">
+  <label>Title<input name="title" required maxlength="200"></label>
+  <label>Author<input name="author" required maxlength="200"></label>
+  <label>ISBN<input name="isbn" maxlength="32"></label>
+  <label>Copies<input name="total_copies" type="number" value="1" min="1" required></label>
+  <button class="primary" type="submit">Add book</button>
+</form>
+{% endif %}
+<div class="table-wrap"><table><thead><tr><th>Title</th><th>Author</th><th>ISBN</th><th>Available</th></tr></thead><tbody>
+{% for book in books %}<tr><td>{{ book.title }}</td><td>{{ book.author }}</td><td>{{ book.isbn or "—" }}</td><td>{{ book.available_copies }} / {{ book.total_copies }}</td></tr>
+{% else %}<tr><td colspan="4" class="empty">No books yet.</td></tr>{% endfor %}
+</tbody></table></div>
