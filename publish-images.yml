@@ -1,0 +1,61 @@
+# Χτίζει και δημοσιεύει τα τρία custom images στο GHCR.
+name: Publish Docker images
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Build ${{ matrix.component }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - component: api
+            context: .
+            image: library-cloud-api
+
+          - component: keycloak
+            context: ./keycloak
+            image: library-cloud-keycloak
+
+          - component: node-red
+            context: ./node-red
+            image: library-cloud-node-red
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/user101ig/${{ matrix.image }}:latest
+            ghcr.io/user101ig/${{ matrix.image }}:1.0.0
+          labels: |
+            org.opencontainers.image.source=https://github.com/user101ig/library-cloud
