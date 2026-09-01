@@ -512,11 +512,23 @@ library-audit/
 
 ### Images και δεδομένα
 
-- `lib-system-api`: FastAPI, templates, static files και dependencies.
-- `lib-system-keycloak`: realm import και custom theme.
-- `lib-system-node-red`: flow και Node.js dependencies.
+- `ghcr.io/user101ig/library-cloud-api:1.0.0`: FastAPI, templates και dependencies.
+- `ghcr.io/user101ig/library-cloud-keycloak:1.0.0`: realm import και custom theme.
+- `ghcr.io/user101ig/library-cloud-node-red:1.0.0`: flow και Node.js dependencies.
 - SQLite: bind mount `./data:/app/data`.
 - Keycloak, RabbitMQ και MinIO: ξεχωριστά named volumes.
+
+Τα τρία custom images δημοσιεύονται αυτόματα στο GitHub Container Registry
+από το workflow `.github/workflows/publish-images.yml`. Το workflow εκτελείται
+σε κάθε push στο `main` και χτίζει εκδόσεις για `linux/amd64` και `linux/arm64`.
+
+Έλεγχος των δημοσιευμένων images:
+
+```bash
+docker pull ghcr.io/user101ig/library-cloud-api:1.0.0
+docker pull ghcr.io/user101ig/library-cloud-keycloak:1.0.0
+docker pull ghcr.io/user101ig/library-cloud-node-red:1.0.0
+```
 
 Το `docker compose down` διατηρεί τα δεδομένα. Το `docker compose down -v`
 διαγράφει οριστικά τα named volumes, αλλά όχι το bind-mounted `data/library.db`.
@@ -661,17 +673,29 @@ kubectl get nodes
 
 Το node πρέπει να είναι `Ready`.
 
-### Build και deployment
+### Deployment σε MicroK8s VM
 
 ```bash
-docker compose build api keycloak node-red
-docker compose down
-kubectl apply -f k8s/
-kubectl get pods -n library-cloud -w
+sudo snap install microk8s --classic
+sudo usermod -a -G microk8s "$USER"
+mkdir -p ~/.kube
+chmod 0700 ~/.kube
 ```
 
-Τα manifests χρησιμοποιούν `imagePullPolicy: Never` για τα local images. Το
-Compose σταματά πρώτα επειδή εκθέτει τις ίδιες ports.
+Μετά από νέο login στο VM:
+
+```bash
+microk8s status --wait-ready
+microk8s enable dns hostpath-storage
+git clone https://github.com/user101ig/library-cloud.git
+cd library-cloud
+microk8s kubectl apply -f k8s/
+microk8s kubectl get pods -n library-cloud -w
+```
+
+Τα manifests χρησιμοποιούν versioned public GHCR images με
+`imagePullPolicy: IfNotPresent`. Το VM δεν χρειάζεται να χτίσει images ούτε να
+κάνει login στο GitHub Container Registry.
 
 ### Έλεγχος και logs
 
@@ -751,10 +775,10 @@ docker compose ps rabbitmq minio node-red
 ### Kubernetes `ImagePullBackOff`
 
 ```bash
-docker compose build api keycloak node-red
+docker pull ghcr.io/user101ig/library-cloud-api:1.0.0
 ```
 
-Το cluster πρέπει να έχει πρόσβαση στο ίδιο local image store.
+Επιβεβαίωσε ότι τα GHCR packages είναι public και ότι το image/tag υπάρχει.
 
 ### Το `kubectl` δεν βρίσκει cluster
 
