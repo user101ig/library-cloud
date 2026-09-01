@@ -3,6 +3,7 @@ name: lib-system
 services:
   # Κεντρική εφαρμογή και HTMX frontend.
   api:
+    image: ghcr.io/user101ig/library-cloud-api:1.0.0
     build:
       context: .
     container_name: lib-system-api
@@ -36,7 +37,7 @@ services:
       - library-network
 
   keycloak:
-    image: lib-system-keycloak:latest
+    image: ghcr.io/user101ig/library-cloud-keycloak:1.0.0
     build:
       context: ./keycloak
     container_name: lib-system-keycloak
@@ -94,6 +95,7 @@ services:
       - library-network
 
   node-red:
+    image: ghcr.io/user101ig/library-cloud-node-red:1.0.0
     build:
       context: ./node-red
     container_name: lib-system-node-red

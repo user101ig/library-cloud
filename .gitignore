@@ -1,12 +1,16 @@
 # Τοπικά και παραγόμενα αρχεία.
 .venv/
 .uv-cache/
+.uv-python/
 __pycache__/
 *.py[cod]
 .DS_Store
 .env
-data/
+data/*
+!data/.gitkeep
 *.db
 *.sqlite
 .idea/
 node_modules/
+assignment.pdf
+*.zip
