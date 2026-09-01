@@ -1,0 +1,13 @@
+# Αρχεία που δεν χρειάζονται στο API image.
+.env
+.git
+.idea
+.uv-cache
+.uv-python
+.venv
+__pycache__
+*.py[cod]
+assignment.pdf
+data
+node-red
+keycloak
